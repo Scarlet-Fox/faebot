@@ -27,7 +27,7 @@ impl FudgeResult {
         return result_text;
     }
     fn ladder_text(&self, stat_value: i8) -> String {
-        let mut current_total = self.total + stat_value;
+        let current_total = self.total + stat_value;
         let ladder_text = match current_total {
             8 => "Legendary",
             7 => "Epic",
@@ -53,11 +53,11 @@ fn roll_fudge_dice<'a>() -> &'a str {
     return result;
 }
 
-fn roll_multiple_fudge<'a>(how_many: i8) -> FudgeResult {
+fn roll_multiple_fudge<'a>(how_many: u8) -> FudgeResult {
     let mut current_total: i8 = 0;
     let mut results: Vec<String> = Vec::new();
 
-    for number in 1..how_many+1 {
+    for _number in 1..how_many+1 {
         let current_result = roll_fudge_dice();
 
         match current_result {
@@ -78,7 +78,7 @@ fn roll_multiple_fudge<'a>(how_many: i8) -> FudgeResult {
     };
 }
 
-#[poise::command(slash_command, prefix_command)]
+#[poise::command(slash_command)]
 async fn fudge(
     ctx: Context<'_>,
     #[description = "Give a number to add to the roll"] stat_value: i8
@@ -98,6 +98,27 @@ async fn fudge(
     Ok(())
 }
 
+#[poise::command(slash_command)]
+async fn xfudge(
+    ctx: Context<'_>,
+    #[description = "How many fudge dice should we roll?"] fudge_dice: u8,
+    #[description = "Give a number to add to the roll"] stat_value: i8
+) -> Result<(), Error> {
+    let mut capped_stat_value= stat_value;
+    if stat_value.saturating_sub(4) == i8::MIN {
+        capped_stat_value = i8::MIN + 4;
+    } else if stat_value.saturating_add(4) == i8::MAX {
+        capped_stat_value = i8::MAX - 4;
+    }
+    let result = roll_multiple_fudge(fudge_dice);
+    let response = format!("Result: **{} ({} = {} + {})** [ {} ]",
+                           result.ladder_text(capped_stat_value),
+                           result.total + capped_stat_value, capped_stat_value, result.total,
+                           result.merged_results());
+    ctx.say(response).await?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     let token = std::env::var("DISCORD_TOKEN").expect("Missing discord token.");
@@ -105,7 +126,7 @@ async fn main() {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions{
-            commands: vec![fudge()],
+            commands: vec![fudge(), xfudge()],
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
@@ -125,7 +146,7 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::roll_fudge_dice;
+    use crate::{roll_fudge_dice, roll_multiple_fudge};
 
     #[test]
     fn test_roll() {
