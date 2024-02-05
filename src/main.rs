@@ -1,8 +1,15 @@
 use poise::serenity_prelude as serenity;
+use sqlx;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions, SqlitePool, SqliteJournalMode};
+use std::env;
+use std::str::FromStr;
 
-mod utilities;
+mod lib;
+mod characters;
 
-struct Data {} // User data, which is stored and accessible in all command invocations
+struct Data {
+    pub db: SqlitePool
+} // User data, which is stored and accessible in all command invocations
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
@@ -17,7 +24,7 @@ async fn fudge(
     } else if stat_value.saturating_add(4) == i8::MAX {
         capped_stat_value = i8::MAX - 4;
     }
-    let result = utilities::roll_multiple_fudge(4);
+    let result = lib::roll_multiple_fudge(4);
     let response = format!("Result: **{} ({} = {} + {})** [ {} ]",
                            result.ladder_text(capped_stat_value),
                            result.total + capped_stat_value, capped_stat_value, result.total,
@@ -43,7 +50,7 @@ async fn xfudge(
     } else if stat_value.saturating_add(capped_dice_amount) == i8::MAX {
         capped_stat_value = i8::MAX - capped_dice_amount;
     }
-    let result = utilities::roll_multiple_fudge(fudge_dice);
+    let result = lib::roll_multiple_fudge(fudge_dice);
     let response = format!("Result: **{} ({} = {} + {})** [ {} ]",
                            result.ladder_text(capped_stat_value),
                            result.total + capped_stat_value, capped_stat_value, result.total,
@@ -52,10 +59,17 @@ async fn xfudge(
     Ok(())
 }
 
+
 #[tokio::main]
 async fn main() {
-    let token = std::env::var("DISCORD_TOKEN").expect("Missing discord token.");
+    let token = env::var("DISCORD_TOKEN").expect("Missing discord token.");
     let intents = serenity::GatewayIntents::non_privileged();
+    let db_url = &env::var("DATABASE_URL").expect("Unable to read DATABASE_URL environment variable.");
+    let options = SqliteConnectOptions::from_str(db_url).expect("Unable to read database.")
+        .create_if_missing(true)
+        .journal_mode(SqliteJournalMode::Wal);
+    let pool = SqlitePool::connect_with(options).await.expect("Database connection failed!");
+    let data = Data { db: pool.clone() };
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions{
@@ -65,7 +79,7 @@ async fn main() {
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data {})
+                Ok(data)
             })
         })
         .build();
