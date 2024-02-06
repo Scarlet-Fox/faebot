@@ -19,10 +19,10 @@ Cargo.lock
 # Text editor folder
 .idea
 
-# Local configuration
-sqlite.db
-faebot.db
-
+# SQLite Database stuff
+*.db
+*.db-wal
+*.db-shm
 
 # Added by cargo
 
