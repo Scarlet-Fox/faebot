@@ -75,7 +75,7 @@ pub(crate) fn roll_multiple_fudge<'a>(how_many: u8) -> FudgeResult {
 
 #[cfg(test)]
 mod tests {
-    use crate::lib::{roll_fudge_dice, PLUS, MINUS, BLANK};
+    use crate::fudge_dice::{roll_fudge_dice, PLUS, MINUS, BLANK};
 
     #[test]
     fn test_roll() {
