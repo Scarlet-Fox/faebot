@@ -60,6 +60,50 @@ impl CharacterSheet {
         let converted_mental_stress_stress: u8 = character_mental_stress_capacity.parse().unwrap_or(0);
 
         let mut character_skills:HashMap<String, u8> = HashMap::new();
+        let superb_one = get_or_blank_str(&character_code, 16);
+        if superb_one != "" { &character_skills.insert(superb_one.to_string(), 5); }
+        let superb_two = get_or_blank_str(&character_code, 17);
+        if superb_two != "" { &character_skills.insert(superb_two.to_string(), 5); }
+        let superb_three = get_or_blank_str(&character_code, 18);
+        if superb_three != "" { &character_skills.insert(superb_three.to_string(), 5); }
+        let superb_four = get_or_blank_str(&character_code, 19);
+        if superb_four != "" { &character_skills.insert(superb_four.to_string(), 5); }
+
+        let great_one = get_or_blank_str(&character_code, 20);
+        if great_one != "" { &character_skills.insert(great_one.to_string(), 4); }
+        let great_two = get_or_blank_str(&character_code, 21);
+        if great_two != "" { &character_skills.insert(great_two.to_string(), 4); }
+        let great_three = get_or_blank_str(&character_code, 22);
+        if great_three != "" { &character_skills.insert(great_three.to_string(), 4); }
+        let great_four = get_or_blank_str(&character_code, 23);
+        if great_four != "" { &character_skills.insert(great_four.to_string(), 4); }
+
+        let good_one = get_or_blank_str(&character_code, 24);
+        if good_one != "" { &character_skills.insert(good_one.to_string(), 3); }
+        let good_two = get_or_blank_str(&character_code, 25);
+        if good_two != "" { &character_skills.insert(good_two.to_string(), 3); }
+        let good_three = get_or_blank_str(&character_code, 26);
+        if good_three != "" { &character_skills.insert(good_three.to_string(), 3); }
+        let good_four = get_or_blank_str(&character_code, 27);
+        if good_four != "" { &character_skills.insert(good_four.to_string(), 3); }
+
+        let fair_one = get_or_blank_str(&character_code, 28);
+        if fair_one != "" { &character_skills.insert(fair_one.to_string(), 2); }
+        let fair_two = get_or_blank_str(&character_code, 29);
+        if fair_two != "" { &character_skills.insert(fair_two.to_string(), 2); }
+        let fair_three = get_or_blank_str(&character_code, 30);
+        if fair_three != "" { &character_skills.insert(fair_three.to_string(), 2); }
+        let fair_four = get_or_blank_str(&character_code, 31);
+        if fair_four != "" { &character_skills.insert(fair_four.to_string(), 2); }
+
+        let average_one = get_or_blank_str(&character_code, 32);
+        if average_one != "" { &character_skills.insert(average_one.to_string(), 1); }
+        let average_two = get_or_blank_str(&character_code, 33);
+        if average_two != "" { &character_skills.insert(average_two.to_string(), 1); }
+        let average_three = get_or_blank_str(&character_code, 34);
+        if average_three != "" { &character_skills.insert(average_three.to_string(), 1); }
+        let average_four = get_or_blank_str(&character_code, 35);
+        if average_four != "" { &character_skills.insert(average_four.to_string(), 1); }
 
         let character_sheet = Self {
             name: character_name.to_string(),
@@ -132,12 +176,31 @@ INSERT INTO characters (
             .await.expect("Failed to add character to database.")
             .last_insert_rowid();
 
+        for (key, value) in &self.skills {
+            println!("{:}, {:}", key, value);
+            sqlx::query!(
+                r#"
+INSERT INTO character_skills (
+    character_id,
+    level,
+    name
+) VALUES (
+    ?1, ?2, ?3
+)
+                "#,
+                character_id,
+                value,
+                key
+            ).execute(pool).await.expect("Failed to add skill to database.");
+        }
+
         return character_id;
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use sqlx;
     use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqliteJournalMode};
     use std::str::FromStr;
@@ -145,7 +208,7 @@ mod tests {
 
     #[test]
     fn character_from_code() {
-        let code = "Name§This is a description.⏎⏎Trust me.§0§Highest of Concepts§Afoot§Grand Ambitions§Friends in Low Places§Unceasing Bookworm§Lorem ipsum dolor sit amet, consectetur adipiscing elit.⏎⏎Morbi in neque tincidunt leo facilisis facilisis a id lorem.§• This is a list.⏎• Of stunts.§Stubbed Toe§Languishing Life§Decimating Ennui§Empty Bank Account§2§2§§§§§Investigate§§§§Contacts§Notice§§§§§§§Will§Stealth§Craft§Rapport";
+        let code = "Name§This is a description.⏎⏎Trust me.§0§Highest of Concepts§Afoot§Grand Ambitions§Friends in Low Places§Unceasing Bookworm§Lorem ipsum dolor sit amet, consectetur adipiscing elit.⏎⏎Morbi in neque tincidunt leo facilisis facilisis a id lorem.§• This is a list.⏎• Of stunts.§Stubbed Toe§Languishing Life§Decimating Ennui§Empty Bank Account§2§2§§§§§Investigate§§§§Contacts§Notice§§§Lore§Resources§Empathy§§Will§Stealth§Craft§Rapport";
         let character_sheet = CharacterSheet::from_code(String::from(code));
         println!("{:#?}", character_sheet);
     }
@@ -157,7 +220,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn character_to_db() {
+    async fn character_and_db() {
+        let _ = fs::remove_file("faebot-test.db");
+        let _ = fs::remove_file("faebot-test.db-shm");
+        let _ = fs::remove_file("faebot-test.db-wall");
+
         let db_url = "sqlite://faebot-test.db";
         let options = SqliteConnectOptions::from_str(db_url).expect("Unable to read database.")
             .create_if_missing(true)
@@ -165,11 +232,10 @@ mod tests {
         let pool = SqlitePool::connect_with(options).await.expect("Database connection failed!");
         sqlx::migrate!().run(&pool).await.expect("Unable to run migrations.");
 
-        let code = "Name§This is a description.⏎⏎Trust me.§0§Highest of Concepts§Afoot§Grand Ambitions§Friends in Low Places§Unceasing Bookworm§Lorem ipsum dolor sit amet, consectetur adipiscing elit.⏎⏎Morbi in neque tincidunt leo facilisis facilisis a id lorem.§• This is a list.⏎• Of stunts.§Stubbed Toe§Languishing Life§Decimating Ennui§Empty Bank Account§2§2§§§§§Investigate§§§§Contacts§Notice§§§§§§§Will§Stealth§Craft§Rapport";
+        let code = "Name§This is a description.⏎⏎Trust me.§0§Highest of Concepts§Afoot§Grand Ambitions§Friends in Low Places§Unceasing Bookworm§Lorem ipsum dolor sit amet, consectetur adipiscing elit.⏎⏎Morbi in neque tincidunt leo facilisis facilisis a id lorem.§• This is a list.⏎• Of stunts.§Stubbed Toe§Languishing Life§Decimating Ennui§Empty Bank Account§2§2§§§§§Investigate§§§§Contacts§Notice§§§Lore§Resources§Empathy§§Will§Stealth§Craft§Rapport";
         let character_sheet = CharacterSheet::from_code(String::from(code));
-        let character_id = character_sheet.save_to_db(&pool, "test".to_string(), "test".to_string()).await;
 
+        let character_id = character_sheet.save_to_db(&pool, "test".to_string(), "test".to_string()).await;
         println!("{:#?}", character_id);
     }
 }
-

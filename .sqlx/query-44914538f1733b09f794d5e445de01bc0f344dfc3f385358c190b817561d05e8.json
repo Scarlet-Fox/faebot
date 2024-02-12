@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\nINSERT INTO character_skills (\n    character_id,\n    level,\n    name\n) VALUES (\n    ?1, ?2, ?3\n)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "44914538f1733b09f794d5e445de01bc0f344dfc3f385358c190b817561d05e8"
+}
