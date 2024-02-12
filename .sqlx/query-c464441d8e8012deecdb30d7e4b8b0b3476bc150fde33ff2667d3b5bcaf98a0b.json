@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\nINSERT INTO characters (\n    guild_id,\n    owner_id,\n    name,\n    description,\n    refresh,\n    high_concept,\n    trouble,\n    aspect_three,\n    aspect_four,\n    aspect_five,\n    extras,\n    stunts,\n    consequence_one,\n    consequence_two,\n    consequence_three,\n    consequence_four,\n    physical_capacity,\n    mental_capacity\n) VALUES (\n    ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18\n)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 18
+    },
+    "nullable": []
+  },
+  "hash": "c464441d8e8012deecdb30d7e4b8b0b3476bc150fde33ff2667d3b5bcaf98a0b"
+}

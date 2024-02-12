@@ -12,3 +12,4 @@ rand = "0.8.5"
 itertools = "0.12.1"
 sqlx = { version = "0.7.3", features = ["sqlite", "runtime-tokio"] }
 log = "0.4.20"
+anyhow = "1.0.79"

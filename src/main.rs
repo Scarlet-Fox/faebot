@@ -23,6 +23,7 @@ async fn main() {
         .create_if_missing(true)
         .journal_mode(SqliteJournalMode::Wal);
     let pool = SqlitePool::connect_with(options).await.expect("Database connection failed!");
+    sqlx::migrate!().run(&pool).await.expect("Unable to run migrations.");
     let data = Data { db: pool.clone() };
 
     let framework = poise::Framework::builder()

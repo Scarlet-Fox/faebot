@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqliteJournalMode};
 
 fn get_or_blank_str<'a>(character_code: &'a Vec<&'a str>, index: usize) -> &'a str {
     let mut result= "";
@@ -82,10 +83,64 @@ impl CharacterSheet {
 
         return character_sheet;
     }
+
+    pub async fn save_to_db(&self, pool: &SqlitePool, guild_id: String, owner_id: String) -> i64 {
+        let character_id = sqlx::query!(
+            r#"
+INSERT INTO characters (
+    guild_id,
+    owner_id,
+    name,
+    description,
+    refresh,
+    high_concept,
+    trouble,
+    aspect_three,
+    aspect_four,
+    aspect_five,
+    extras,
+    stunts,
+    consequence_one,
+    consequence_two,
+    consequence_three,
+    consequence_four,
+    physical_capacity,
+    mental_capacity
+) VALUES (
+    ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18
+)
+            "#,
+            guild_id,
+            owner_id,
+            self.name,
+            self.description,
+            self.refresh,
+            self.high_concept,
+            self.trouble,
+            self.aspect_three,
+            self.aspect_four,
+            self.aspect_five,
+            self.extras,
+            self.stunts,
+            self.consequence_one,
+            self.consequence_two,
+            self.consequence_three,
+            self.consequence_four,
+            self.physical_stress_boxes,
+            self.mental_stress_boxes
+        ).execute(pool)
+            .await.expect("Failed to add character to database.")
+            .last_insert_rowid();
+
+        return character_id;
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use sqlx;
+    use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqliteJournalMode};
+    use std::str::FromStr;
     use crate::characters::CharacterSheet;
 
     #[test]
@@ -99,6 +154,22 @@ mod tests {
     fn character_from_blank_code() {
         let code = "";
         CharacterSheet::from_code(String::from(code));
+    }
+
+    #[tokio::test]
+    async fn character_to_db() {
+        let db_url = "sqlite://faebot-test.db";
+        let options = SqliteConnectOptions::from_str(db_url).expect("Unable to read database.")
+            .create_if_missing(true)
+            .journal_mode(SqliteJournalMode::Wal);
+        let pool = SqlitePool::connect_with(options).await.expect("Database connection failed!");
+        sqlx::migrate!().run(&pool).await.expect("Unable to run migrations.");
+
+        let code = "Name§This is a description.⏎⏎Trust me.§0§Highest of Concepts§Afoot§Grand Ambitions§Friends in Low Places§Unceasing Bookworm§Lorem ipsum dolor sit amet, consectetur adipiscing elit.⏎⏎Morbi in neque tincidunt leo facilisis facilisis a id lorem.§• This is a list.⏎• Of stunts.§Stubbed Toe§Languishing Life§Decimating Ennui§Empty Bank Account§2§2§§§§§Investigate§§§§Contacts§Notice§§§§§§§Will§Stealth§Craft§Rapport";
+        let character_sheet = CharacterSheet::from_code(String::from(code));
+        let character_id = character_sheet.save_to_db(&pool, "test".to_string(), "test".to_string()).await;
+
+        println!("{:#?}", character_id);
     }
 }
 
